@@ -8,6 +8,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"path"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -62,11 +63,17 @@ func getRemoteBackup(r *Restore, conf config.Config) {
 	s3Conn := session.New(&aws.Config{Region: aws.String(string(conf.S3Region))})
 
 	r.LocalFilePath = fmt.Sprintf("%v/%v", conf.TmpDir, r.RestorePath)
+	baseDir := path.Dir(r.LocalFilePath)
+	err := os.MkdirAll(baseDir, 644)
+	if err != nil {
+		log.Fatalf("Unable to create base dir: %v", err)
+	}
 
 	outFile, err := os.Create(r.LocalFilePath)
 	if err != nil {
 		log.Fatalf("[ERR] Unable to create local restore temp file!: %v", err)
 	}
+	defer outFile.Close()
 
 	// Create the params to pass into the actual downloader
 	params := &s3.GetObjectInput{
@@ -80,7 +87,6 @@ func getRemoteBackup(r *Restore, conf config.Config) {
 	if err != nil {
 		log.Fatalf("[ERR] Could not download file from S3!: %v", err)
 	}
-	outFile.Close()
 	log.Print("[INFO] Download completed")
 }
 
